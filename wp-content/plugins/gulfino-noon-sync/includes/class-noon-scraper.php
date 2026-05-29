@@ -27,10 +27,13 @@ class Gulfino_Noon_Scraper {
         ],
     ];
 
+    const MAX_RETRIES = 3;
+
     const USER_AGENTS = [
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
     ];
 
     /**
@@ -99,15 +102,57 @@ class Gulfino_Noon_Scraper {
     }
 
     private static function request( string $url ): string {
+        $last_error = null;
+
+        for ( $attempt = 1; $attempt <= self::MAX_RETRIES; $attempt++ ) {
+            if ( $attempt > 1 ) {
+                $delay = $attempt * 5; // 10s, 15s back-off
+                Gulfino_Noon_Logger::sync( sprintf( 'Retry %d/%d for %s (waiting %ds)', $attempt, self::MAX_RETRIES, $url, $delay ), 'WARN' );
+                sleep( $delay );
+            }
+
+            try {
+                $result = self::do_request( $url );
+                return $result;
+            } catch ( RuntimeException $e ) {
+                $last_error = $e;
+                Gulfino_Noon_Logger::error( sprintf( 'Request attempt %d failed: %s', $attempt, $e->getMessage() ) );
+            }
+        }
+
+        throw new RuntimeException( 'All request attempts failed. Last error: ' . ( $last_error ? $last_error->getMessage() : 'unknown' ) );
+    }
+
+    private static function do_request( string $url ): string {
+        $settings    = get_option( Gulfino_Noon_Admin::OPTION_KEY, [] );
+        $scraper_key = trim( $settings['scraper_api_key'] ?? '' );
+
+        // Route through ScraperAPI if a key is configured.
+        if ( $scraper_key !== '' ) {
+            $fetch_url = add_query_arg(
+                [
+                    'api_key'        => $scraper_key,
+                    'url'            => rawurlencode( $url ),
+                    'render'         => 'false',
+                    'country_code'   => 'us',
+                ],
+                'https://api.scraperapi.com/'
+            );
+            Gulfino_Noon_Logger::sync( 'Using ScraperAPI proxy.' );
+        } else {
+            $fetch_url = $url;
+        }
+
         $response = wp_remote_get(
-            $url,
+            $fetch_url,
             [
-                'timeout'    => 45,
+                'timeout'    => 60,
                 'user-agent' => self::USER_AGENTS[ array_rand( self::USER_AGENTS ) ],
                 'headers'    => [
                     'Accept'          => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
                     'Accept-Language' => 'en-US,en;q=0.9',
                     'Cache-Control'   => 'no-cache',
+                    'Referer'         => 'https://www.google.com/',
                 ],
             ]
         );
@@ -117,11 +162,19 @@ class Gulfino_Noon_Scraper {
         }
 
         $code = wp_remote_retrieve_response_code( $response );
+        if ( $code === 403 || $code === 429 ) {
+            throw new RuntimeException( sprintf( 'HTTP %d — server blocked the request for URL: %s', $code, $url ) );
+        }
         if ( $code < 200 || $code >= 300 ) {
             throw new RuntimeException( sprintf( 'HTTP %d for URL: %s', $code, $url ) );
         }
 
-        return (string) wp_remote_retrieve_body( $response );
+        $body = (string) wp_remote_retrieve_body( $response );
+        if ( strlen( $body ) < 500 ) {
+            throw new RuntimeException( sprintf( 'Response too short (%d bytes) — likely blocked.', strlen( $body ) ) );
+        }
+
+        return $body;
     }
 
     /**

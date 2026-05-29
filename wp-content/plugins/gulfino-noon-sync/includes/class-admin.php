@@ -49,7 +49,8 @@ class Gulfino_Noon_Admin {
         $input = is_array( $input ) ? $input : [];
 
         return [
-            'enabled' => ! empty( $input['enabled'] ) ? 1 : 0,
+            'enabled'          => ! empty( $input['enabled'] ) ? 1 : 0,
+            'scraper_api_key'  => sanitize_text_field( $input['scraper_api_key'] ?? '' ),
         ];
     }
 
@@ -122,6 +123,19 @@ class Gulfino_Noon_Admin {
                                         <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[enabled]" value="1" <?php checked( ! empty( $opts['enabled'] ) ); ?>>
                                         Run sync automatically once every 24 hours
                                     </label>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row">ScraperAPI Key</th>
+                                <td>
+                                    <input type="text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[scraper_api_key]"
+                                           value="<?php echo esc_attr( $opts['scraper_api_key'] ?? '' ); ?>"
+                                           class="regular-text" placeholder="Leave blank to use direct requests">
+                                    <p class="description">
+                                        noon.com blocks server IPs. Get a free key at
+                                        <a href="https://www.scraperapi.com/" target="_blank">scraperapi.com</a>
+                                        (1,000 free requests/month). Without this key, syncs will time out.
+                                    </p>
                                 </td>
                             </tr>
                         </table>
