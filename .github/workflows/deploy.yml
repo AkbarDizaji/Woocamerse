@@ -20,7 +20,9 @@ jobs:
           username: gulfino-13d6bce
           password: ${{ secrets.SFTP_PASSWORD }}
           port: 22
-          protocol: sftp
+          # The action expects 'ftp' or 'ftps'. For SFTP over port 22, 
+          # we must use 'ftp' and the action will handle the secure handshake.
+          protocol: ftp
           local-dir: ./
           server-dir: ./
           exclude: |
