@@ -13,6 +13,14 @@ jobs:
       - name: Get latest code
         uses: actions/checkout@v4
 
+      - name: Remove non-deployable files before upload
+        run: |
+          rm -rf .git
+          rm -rf .github
+          rm -rf scripts
+          rm -rf wp-content/backups-dup-lite
+          rm -f wp-config.php .env router.php
+
       - name: Sync Files to EasyWP
         uses: wlixcc/SFTP-Deploy-Action@v1.2.4
         with:
