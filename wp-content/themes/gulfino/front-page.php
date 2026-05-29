@@ -148,7 +148,7 @@ $shop_url = function_exists('wc_get_page_permalink') ? wc_get_page_permalink('sh
         </div>
       </div>
       <div class="g-hero-img">
-        <img src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=900&q=85" alt="Fashion">
+        <img src="https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=900&q=85" alt="Luxury Cosmetics">
       </div>
     </div>
   </div>
