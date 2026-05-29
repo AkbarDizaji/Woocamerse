@@ -131,12 +131,12 @@ $shop_url = function_exists('wc_get_page_permalink') ? wc_get_page_permalink('sh
         </div>
       </div>
       <div class="g-hero-img">
-        <img src="https://images.unsplash.com/photo-1541614101331-1a5a3a194e94?auto=format&fit=crop&w=900&q=85" alt="Gulfino Products">
+        <img src="https://images.unsplash.com/photo-1739190940453-20900e9d18fb?auto=format&fit=crop&w=900&q=85" alt="Gulfino Products">
       </div>
     </div>
   </div>
   <div class="g-slide">
-    <div class="g-slide-bg" style="background-image:url('https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?auto=format&fit=crop&w=1920&q=85');"></div>
+    <div class="g-slide-bg" style="background-image:url('https://images.unsplash.com/photo-1761474258114-8006f62cd35b?auto=format&fit=crop&w=1920&q=85');"></div>
     <div class="g-slide-grad"></div>
     <div class="g-hero-inner">
       <div class="g-hero-text">
