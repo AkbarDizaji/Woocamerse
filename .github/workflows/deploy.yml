@@ -1,6 +1,5 @@
 name: Deploy to EasyWP
 
-
 on:
   push:
     branches:
@@ -11,10 +10,10 @@ jobs:
     name: SFTP Deploy
     runs-on: ubuntu-latest
     steps:
-      - name: 🚚 Get latest code
+      - name: Get latest code
         uses: actions/checkout@v4
 
-      - name: 🚀 Sync Files to EasyWP
+      - name: Sync Files to EasyWP
         uses: wlixcc/SFTP-Deploy-Action@v1.2.4
         with:
           username: 'gulfino-13d6bce'
@@ -25,21 +24,3 @@ jobs:
           remote_path: './'
           sftp_only: true
           delete_remote_files: false
-          exclude: |
-            .git*
-            .git*/**
-            node_modules/**
-            wp-config.php
-            .env
-            router.php
-            gulfino-diag.php
-            g-info.php
-            purge-cache.php
-            check-db-http.php
-            check-urls.php
-            gulfino-fix.php
-            gulfino-check.php
-            gulfino-repair.php
-            .cursor/
-            .vscode/
-            scripts/
