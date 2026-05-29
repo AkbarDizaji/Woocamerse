@@ -21,12 +21,20 @@ jobs:
           password: ${{ secrets.SFTP_PASSWORD }}
           port: 22
           protocol: sftp
-          # We only sync the custom parts to keep it fast
           local-dir: ./
-          server-dir: /wptbox/
+          server-dir: ./
           exclude: |
             **/.git*
             **/.git*/**
             **/node_modules/**
             wp-config.php
             .env
+            router.php
+            gulfino-diag.php
+            g-info.php
+            purge-cache.php
+            check-db-http.php
+            check-urls.php
+            gulfino-fix.php
+            gulfino-check.php
+            gulfino-repair.php
