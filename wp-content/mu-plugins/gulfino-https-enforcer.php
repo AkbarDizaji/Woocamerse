@@ -15,6 +15,10 @@ add_filter('script_loader_src', 'gulfino_force_https', 10, 2);
 add_filter('style_loader_src', 'gulfino_force_https', 10, 2);
 
 function gulfino_force_https($url) {
+    // Skip for localhost
+    if (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false) {
+        return $url;
+    }
     if (is_string($url)) {
         return str_replace('http://', 'https://', $url);
     }
@@ -23,6 +27,10 @@ function gulfino_force_https($url) {
 
 // Force redirect to HTTPS if not already on it
 add_action('template_redirect', function() {
+    // Skip for localhost
+    if (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false) {
+        return;
+    }
     if (!is_ssl() && !is_admin()) {
         if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
             // Already on HTTPS via proxy, do nothing
