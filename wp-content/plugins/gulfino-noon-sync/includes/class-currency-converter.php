@@ -78,6 +78,23 @@ class Gulfino_Noon_Currency_Converter {
      * @param array<string, mixed> $body
      */
     private static function extract_rial_rate( array $body ): float {
+        // Current format: summary-table-data returns DataTables-style rows under
+        // "data", each row = [open, low, high, close, change, pct, g_date, j_date].
+        // The first row is the most recent day; use its close (index 3), falling
+        // back to open (index 0).
+        if ( isset( $body['data'][0] ) && is_array( $body['data'][0] ) ) {
+            $row = $body['data'][0];
+            foreach ( [ 3, 0, 2, 1 ] as $col ) {
+                if ( isset( $row[ $col ] ) ) {
+                    $value = self::parse_number( $row[ $col ] );
+                    if ( $value > 0 ) {
+                        return $value;
+                    }
+                }
+            }
+        }
+
+        // Legacy object format fallback.
         $paths = [
             [ 'data', 'summary', 'p' ],
             [ 'data', 'summary', 'price' ],
