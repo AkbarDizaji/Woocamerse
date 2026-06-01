@@ -14,13 +14,13 @@ class Gulfino_Noon_Scraper {
 
     const CATEGORIES = [
         'health-beauty' => [
-            'url'              => 'https://www.noon.com/oman-en/health-beauty/?sort_by=bestselling',
+            'url'              => 'https://www.noon.com/oman-en/health/?sort_by=bestselling',
             'slug'             => 'health-beauty',
             'category_fa'      => 'بهداشت و مراقبت شخصی',
             'category_en'      => 'Health & Personal Care',
         ],
         'fragrances' => [
-            'url'              => 'https://www.noon.com/oman-en/fragrances/?sort_by=bestselling',
+            'url'              => 'https://www.noon.com/oman-en/beauty/fragrances/?sort_by=bestselling',
             'slug'             => 'fragrances',
             'category_fa'      => 'عطر و ادکلن',
             'category_en'      => 'Perfumes & Fragrances',
@@ -78,12 +78,7 @@ class Gulfino_Noon_Scraper {
             throw new RuntimeException( sprintf( 'Empty response for category: %s', $category['slug'] ) );
         }
 
-        $data = self::extract_next_data( $html );
-        if ( ! $data ) {
-            throw new RuntimeException( sprintf( 'Could not parse __NEXT_DATA__ for category: %s', $category['slug'] ) );
-        }
-
-        $hits = self::extract_hits( $data );
+        $hits = self::extract_hits( $html );
         if ( empty( $hits ) ) {
             Gulfino_Noon_Logger::sync( sprintf( 'No products found in category: %s', $category['slug'] ), 'WARN' );
             return [];
@@ -178,45 +173,117 @@ class Gulfino_Noon_Scraper {
     }
 
     /**
-     * @return array<string, mixed>|null
+     * Extract product "hits" from noon's RSC streaming chunks.
+     *
+     * noon migrated from the Next.js Pages Router (where catalog data lived in a
+     * single <script id="__NEXT_DATA__"> blob) to the App Router, which streams
+     * data as JSON-encoded string chunks: self.__next_f.push([N,"<escaped json>"]).
+     * We decode and concatenate those chunks, then pull every product object that
+     * carries a "sku" key out of the combined payload.
+     *
+     * @return array<int, array<string, mixed>>
      */
-    private static function extract_next_data( string $html ): ?array {
-        if ( ! preg_match( '/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/s', $html, $matches ) ) {
-            return null;
+    private static function extract_hits( string $html ): array {
+        // Each chunk's second element is a JSON-encoded string literal. A lazy
+        // match is used deliberately: a strict string-literal pattern exhausts
+        // the PCRE/JIT stack on noon's multi-hundred-KB data chunk.
+        if ( ! preg_match_all( '/self\.__next_f\.push\(\[\d+,(".*?")\]\)/s', $html, $matches ) ) {
+            return [];
         }
 
-        $json = html_entity_decode( $matches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8' );
-        $data = json_decode( $json, true );
-        return is_array( $data ) ? $data : null;
+        $payload = '';
+        foreach ( $matches[1] as $chunk ) {
+            $decoded = json_decode( $chunk, true ); // JS string literal -> raw fragment
+            if ( is_string( $decoded ) ) {
+                $payload .= $decoded;
+            }
+        }
+
+        if ( $payload === '' ) {
+            return [];
+        }
+
+        $hits   = [];
+        $seen   = [];
+        $offset = 0;
+        while ( ( $pos = strpos( $payload, '"sku":"', $offset ) ) !== false ) {
+            $offset = $pos + 7;
+
+            $object = self::extract_json_object( $payload, $pos );
+            if ( $object === null ) {
+                continue;
+            }
+
+            $hit = json_decode( $object, true );
+            if ( ! is_array( $hit ) || empty( $hit['sku'] ) || empty( $hit['name'] ) ) {
+                continue;
+            }
+
+            $sku = (string) $hit['sku'];
+            if ( isset( $seen[ $sku ] ) ) {
+                continue;
+            }
+            $seen[ $sku ] = true;
+            $hits[]       = $hit;
+        }
+
+        return $hits;
     }
 
     /**
-     * @param array<string, mixed> $data
-     * @return array<int, array<string, mixed>>
+     * Return the smallest balanced {...} object enclosing the given position.
+     *
+     * Walks backward (depth-counting) to the opening brace of the enclosing
+     * object, then forward (string-aware) to its matching close.
      */
-    private static function extract_hits( array $data ): array {
-        $paths = [
-            [ 'props', 'pageProps', 'catalog', 'hits' ],
-            [ 'props', 'pageProps', 'catalogData', 'catalog', 'hits' ],
-            [ 'props', 'pageProps', 'initialState', 'catalog', 'hits' ],
-            [ 'props', 'pageProps', 'data', 'catalog', 'hits' ],
-        ];
-
-        foreach ( $paths as $path ) {
-            $node = $data;
-            foreach ( $path as $key ) {
-                if ( ! is_array( $node ) || ! isset( $node[ $key ] ) ) {
-                    $node = null;
+    private static function extract_json_object( string $s, int $pos ): ?string {
+        $depth = 0;
+        $start = -1;
+        for ( $i = $pos; $i >= 0; $i-- ) {
+            $ch = $s[ $i ];
+            if ( $ch === '}' ) {
+                $depth++;
+            } elseif ( $ch === '{' ) {
+                if ( $depth === 0 ) {
+                    $start = $i;
                     break;
                 }
-                $node = $node[ $key ];
+                $depth--;
             }
-            if ( is_array( $node ) && ! empty( $node ) ) {
-                return $node;
+        }
+        if ( $start < 0 ) {
+            return null;
+        }
+
+        $depth   = 0;
+        $in_str  = false;
+        $escaped = false;
+        $len     = strlen( $s );
+        for ( $j = $start; $j < $len; $j++ ) {
+            $ch = $s[ $j ];
+            if ( $in_str ) {
+                if ( $escaped ) {
+                    $escaped = false;
+                } elseif ( $ch === '\\' ) {
+                    $escaped = true;
+                } elseif ( $ch === '"' ) {
+                    $in_str = false;
+                }
+                continue;
+            }
+            if ( $ch === '"' ) {
+                $in_str = true;
+            } elseif ( $ch === '{' ) {
+                $depth++;
+            } elseif ( $ch === '}' ) {
+                $depth--;
+                if ( $depth === 0 ) {
+                    return substr( $s, $start, $j - $start + 1 );
+                }
             }
         }
 
-        return [];
+        return null;
     }
 
     /**
@@ -265,8 +332,16 @@ class Gulfino_Noon_Scraper {
             $hit['product_url'] ?? null
         );
 
-        if ( $url && strpos( $url, '/' ) === 0 ) {
-            $url = 'https://www.noon.com' . $url;
+        if ( $url ) {
+            if ( strpos( $url, 'http' ) === 0 ) {
+                // Already absolute.
+                $url = $url;
+            } elseif ( strpos( $url, '/' ) === 0 ) {
+                $url = 'https://www.noon.com' . $url;
+            } else {
+                // App Router product objects carry a bare slug, e.g. "yara-edp-100ml".
+                $url = 'https://www.noon.com/oman-en/' . ltrim( $url, '/' ) . '/' . rawurlencode( (string) $sku ) . '/p/';
+            }
         }
 
         return [
@@ -364,7 +439,11 @@ class Gulfino_Noon_Scraper {
                 }
                 if ( strpos( $key, 'http' ) === 0 ) {
                     $urls[] = $key;
+                } elseif ( strpos( $key, 'pzsku/' ) === 0 || strpos( $key, 'pnsku/' ) === 0 ) {
+                    // App Router keys already carry the full CDN path segment.
+                    $urls[] = 'https://f.nooncdn.com/p/' . $key . '.jpg';
                 } else {
+                    // Legacy bare image key.
                     $urls[] = sprintf( 'https://f.nooncdn.com/p/pnsku/%s/45/%s.jpg', rawurlencode( $sku ), rawurlencode( $key ) );
                 }
                 if ( count( $urls ) >= 4 ) {

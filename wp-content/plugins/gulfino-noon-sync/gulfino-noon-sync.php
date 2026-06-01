@@ -80,6 +80,18 @@ class Gulfino_Noon_Sync {
             ];
         }
 
+        // Prevent overlapping runs (e.g. a manual "Run Now" colliding with wp-cron).
+        // The expiry is a safety net in case a fatal error skips the release below.
+        $lock_key = 'gnoon_sync_lock';
+        if ( get_transient( $lock_key ) ) {
+            Gulfino_Noon_Logger::sync( 'Sync skipped: another run is already in progress.', 'WARN' );
+            return [
+                'status'  => 'skipped',
+                'message' => 'Another sync is already running.',
+            ];
+        }
+        set_transient( $lock_key, current_time( 'mysql' ), 15 * MINUTE_IN_SECONDS );
+
         $started = microtime( true );
         Gulfino_Noon_Logger::sync( 'Daily sync started.' );
 
@@ -127,6 +139,8 @@ class Gulfino_Noon_Sync {
             $stats['errors'][] = $e->getMessage();
             Gulfino_Noon_Logger::error( 'Sync failed: ' . $e->getMessage() );
         }
+
+        delete_transient( $lock_key );
 
         $elapsed = round( microtime( true ) - $started, 2 );
         Gulfino_Noon_Logger::sync(
