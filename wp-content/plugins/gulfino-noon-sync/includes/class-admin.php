@@ -18,6 +18,11 @@ class Gulfino_Noon_Admin {
         add_action( 'admin_menu', [ __CLASS__, 'register_menu' ] );
         add_action( 'admin_init', [ __CLASS__, 'register_settings' ] );
         add_action( 'admin_post_gnoon_run_sync', [ __CLASS__, 'handle_run_sync' ] );
+
+        // Background worker fired via non-blocking loopback, authenticated by a
+        // one-time token (the loopback request carries no admin auth cookie).
+        add_action( 'admin_post_nopriv_gnoon_run_worker', [ __CLASS__, 'handle_worker' ] );
+        add_action( 'admin_post_gnoon_run_worker', [ __CLASS__, 'handle_worker' ] );
     }
 
     public static function register_menu(): void {
@@ -61,17 +66,56 @@ class Gulfino_Noon_Admin {
 
         check_admin_referer( self::NONCE_ACTION );
 
-        Gulfino_Noon_Sync::run();
+        // Dispatch the sync in the background so the browser doesn't sit through
+        // the full scrape/import (which exceeds the gateway timeout and returns
+        // a 504). A one-time token authorises the loopback worker request.
+        $token = wp_generate_password( 24, false );
+        set_transient( 'gnoon_run_token', $token, 5 * MINUTE_IN_SECONDS );
+
+        wp_remote_post(
+            admin_url( 'admin-post.php' ),
+            [
+                'blocking'  => false,
+                'timeout'   => 0.01,
+                'sslverify' => false,
+                'body'      => [
+                    'action' => 'gnoon_run_worker',
+                    'token'  => $token,
+                ],
+            ]
+        );
 
         wp_safe_redirect(
             add_query_arg(
                 [
                     'page'    => self::MENU_SLUG,
-                    'synced'  => '1',
+                    'queued'  => '1',
                 ],
                 admin_url( 'admin.php' )
             )
         );
+        exit;
+    }
+
+    /**
+     * Background worker: runs the full sync out of the user's request cycle.
+     */
+    public static function handle_worker(): void {
+        $token    = isset( $_POST['token'] ) ? sanitize_text_field( wp_unslash( $_POST['token'] ) ) : '';
+        $expected = get_transient( 'gnoon_run_token' );
+
+        if ( ! $expected || ! is_string( $token ) || ! hash_equals( $expected, $token ) ) {
+            exit;
+        }
+        delete_transient( 'gnoon_run_token' );
+
+        // Keep running even though the dispatching request has already closed.
+        ignore_user_abort( true );
+        if ( function_exists( 'set_time_limit' ) ) {
+            @set_time_limit( 0 );
+        }
+
+        Gulfino_Noon_Sync::run();
         exit;
     }
 
@@ -94,9 +138,9 @@ class Gulfino_Noon_Admin {
         <div class="wrap gnoon-wrap">
             <h1>Noon.com Daily Product Sync</h1>
 
-            <?php if ( isset( $_GET['synced'] ) ) : ?>
+            <?php if ( isset( $_GET['queued'] ) ) : ?>
                 <div class="notice notice-success is-dismissible">
-                    <p>Sync completed. Check logs below for details.</p>
+                    <p>Sync started in the background. Refresh this page in a minute to see results in the log below.</p>
                 </div>
             <?php endif; ?>
 

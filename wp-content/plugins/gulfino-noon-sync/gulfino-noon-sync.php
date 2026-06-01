@@ -92,6 +92,12 @@ class Gulfino_Noon_Sync {
         }
         set_transient( $lock_key, current_time( 'mysql' ), 15 * MINUTE_IN_SECONDS );
 
+        // The full scrape/import can run for minutes; don't let PHP cut it short.
+        ignore_user_abort( true );
+        if ( function_exists( 'set_time_limit' ) ) {
+            @set_time_limit( 0 );
+        }
+
         $started = microtime( true );
         Gulfino_Noon_Logger::sync( 'Daily sync started.' );
 
