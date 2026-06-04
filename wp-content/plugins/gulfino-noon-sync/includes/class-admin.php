@@ -23,6 +23,47 @@ class Gulfino_Noon_Admin {
         // one-time token (the loopback request carries no admin auth cookie).
         add_action( 'admin_post_nopriv_gnoon_run_worker', [ __CLASS__, 'handle_worker' ] );
         add_action( 'admin_post_gnoon_run_worker', [ __CLASS__, 'handle_worker' ] );
+
+        // Admin-only display of the original noon source link on the product editor.
+        add_action( 'add_meta_boxes', [ __CLASS__, 'register_source_metabox' ] );
+    }
+
+    /**
+     * Register the "noon source link" meta box on the product editor.
+     * Only added for users who can manage WooCommerce; the link is never shown
+     * to customers on the storefront.
+     */
+    public static function register_source_metabox(): void {
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            return;
+        }
+
+        add_meta_box(
+            'gnoon_source_url',
+            'منبع noon (فقط مدیر)',
+            [ __CLASS__, 'render_source_metabox' ],
+            'product',
+            'side',
+            'default'
+        );
+    }
+
+    /**
+     * @param WP_Post $post
+     */
+    public static function render_source_metabox( $post ): void {
+        $url = get_post_meta( $post->ID, Gulfino_Noon_Product_Importer::META_SOURCE_URL, true );
+
+        if ( empty( $url ) ) {
+            echo '<p style="color:#888;margin:0;">این محصول از noon وارد نشده است.</p>';
+            return;
+        }
+
+        echo '<p style="margin:0 0 8px;color:#555;">لینک صفحهٔ اصلی محصول در noon. فقط برای مدیران قابل مشاهده است و به مشتری نمایش داده نمی‌شود.</p>';
+        printf(
+            '<a href="%1$s" target="_blank" rel="noopener" style="word-break:break-all;font-size:12px;">%1$s</a>',
+            esc_url( $url )
+        );
     }
 
     public static function register_menu(): void {

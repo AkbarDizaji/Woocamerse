@@ -16,6 +16,10 @@ class Gulfino_Noon_Currency_Converter {
     const CACHE_KEY = 'gnoon_omr_toman_rate';
     const CACHE_TTL = HOUR_IN_SECONDS;
 
+    // Extra surcharge (تومان) applied to higher-priced products.
+    const SURCHARGE_THRESHOLD = 5000000; // prices ABOVE this get the surcharge
+    const SURCHARGE_AMOUNT    = 500000;
+
     /**
      * Get OMR to Toman rate with 1.8% markup applied.
      */
@@ -36,6 +40,12 @@ class Gulfino_Noon_Currency_Converter {
     public static function convert_price( float $omr_price, ?float $rate = null ): int {
         $rate = $rate ?? self::get_omr_toman_rate();
         $final = $omr_price * $rate * ( 1 + ( self::MARGIN_PERCENT / 100 ) );
+
+        // Surcharge on higher-priced products.
+        if ( $final > self::SURCHARGE_THRESHOLD ) {
+            $final += self::SURCHARGE_AMOUNT;
+        }
+
         return (int) round( $final );
     }
 

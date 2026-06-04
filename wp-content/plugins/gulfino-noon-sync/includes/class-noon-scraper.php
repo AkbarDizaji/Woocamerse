@@ -437,14 +437,9 @@ class Gulfino_Noon_Scraper {
                 if ( ! is_string( $key ) || $key === '' ) {
                     continue;
                 }
-                if ( strpos( $key, 'http' ) === 0 ) {
-                    $urls[] = $key;
-                } elseif ( strpos( $key, 'pzsku/' ) === 0 || strpos( $key, 'pnsku/' ) === 0 ) {
-                    // App Router keys already carry the full CDN path segment.
-                    $urls[] = 'https://f.nooncdn.com/p/' . $key . '.jpg';
-                } else {
-                    // Legacy bare image key.
-                    $urls[] = sprintf( 'https://f.nooncdn.com/p/pnsku/%s/45/%s.jpg', rawurlencode( $sku ), rawurlencode( $key ) );
+                $url = self::image_key_to_url( $key );
+                if ( $url !== '' ) {
+                    $urls[] = $url;
                 }
                 if ( count( $urls ) >= 4 ) {
                     break;
@@ -452,11 +447,45 @@ class Gulfino_Noon_Scraper {
             }
         }
 
-        if ( empty( $urls ) && ! empty( $hit['image_url'] ) ) {
-            $urls[] = (string) $hit['image_url'];
+        foreach ( [ $hit['image_urls'] ?? null, $hit['image_url'] ?? null ] as $fallback ) {
+            if ( empty( $urls ) && ! empty( $fallback ) ) {
+                foreach ( (array) $fallback as $key ) {
+                    $url = self::image_key_to_url( (string) $key );
+                    if ( $url !== '' ) {
+                        $urls[] = $url;
+                    }
+                }
+            }
         }
 
         return array_values( array_unique( array_slice( $urls, 0, 4 ) ) );
+    }
+
+    /**
+     * Build a usable CDN image URL from a noon image key or URL.
+     *
+     * noon serves the key verbatim after /p/, in two shapes:
+     *   - "pzsku/<id>/45/_/<ts>/<uuid>"        (plain)
+     *   - "<hash>|pzsku/<id>/45/<ts>/<uuid>"   (content-hashed)
+     * The path slashes stay literal; only the pipe must be encoded.
+     */
+    private static function image_key_to_url( string $key ): string {
+        $key = trim( $key );
+        if ( $key === '' ) {
+            return '';
+        }
+
+        if ( strpos( $key, 'http' ) === 0 ) {
+            $url = $key;
+        } elseif ( strpos( $key, '/' ) !== false ) {
+            $url = 'https://f.nooncdn.com/p/' . $key . '.jpg';
+        } else {
+            // Legacy bare key (no path) — keep the historical construction.
+            return '';
+        }
+
+        // "|" is not a legal URL character; encode it so HTTP clients accept it.
+        return str_replace( '|', '%7C', $url );
     }
 
     /**
