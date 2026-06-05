@@ -128,7 +128,7 @@ function gulfino_order_contacts() {
     return apply_filters('gulfino_order_contacts', [
         'instagram' => 'gulfino.store',
         'telegram'  => 'gulfino_support',
-        'whatsapp'  => '989120000000',
+        'whatsapp'  => '96895699131',
     ]);
 }
 

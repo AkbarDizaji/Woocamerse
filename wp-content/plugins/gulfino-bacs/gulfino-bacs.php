@@ -40,8 +40,8 @@ function gbacs_contacts() {
 	$theme = function_exists( 'gulfino_order_contacts' ) ? gulfino_order_contacts() : array();
 
 	return apply_filters( 'gbacs_contacts', array(
-		'whatsapp' => $theme['whatsapp'] ?? '989123456789',
-		'telegram' => '989123456789', // Telegram via phone works as https://t.me/+98...
+		'whatsapp' => $theme['whatsapp'] ?? '96895699131',
+		'telegram' => '96895699131', // Telegram via phone works as https://t.me/+968...
 	) );
 }
 
@@ -51,10 +51,10 @@ function gbacs_contacts() {
  */
 function gbacs_account() {
 	return apply_filters( 'gbacs_account', array(
-		'holder' => 'شرکت گلفینو',                 // صاحب حساب
-		'bank'   => 'بانک ملت',                     // نام بانک
-		'card'   => '6037-9977-1234-5678',          // شماره کارت
-		'sheba'  => 'IR00 0000 0000 0000 0000 0000 00', // شماره شبا
+		'holder' => 'پریناز مهرابی',                // صاحب حساب
+		'bank'   => 'بلو',                          // نام بانک
+		'card'   => '6219-8619-7426-6222',          // شماره کارت
+		'sheba'  => 'IR85 0560 6118 2800 5749 3686 01', // شماره شبا
 		'account'=> '',                              // شماره حساب (اختیاری)
 	) );
 }
@@ -63,6 +63,35 @@ function gbacs_account() {
 function gbacs_deadline_hours() {
 	return (int) apply_filters( 'gbacs_deadline_hours', 24 );
 }
+
+/* -------------------------------------------------------------------------
+ * Checkout: short, clear BACS title + description (code = source of truth,
+ * so it no longer depends on the WooCommerce DB setting).
+ * ---------------------------------------------------------------------- */
+
+/** Convert ASCII digits in a string to Persian digits. */
+function gbacs_fa_digits( $str ) {
+	return str_replace(
+		array( '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' ),
+		array( '۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹' ),
+		(string) $str
+	);
+}
+
+add_filter( 'woocommerce_gateway_title', function ( $title, $id ) {
+	if ( 'bacs' !== $id ) {
+		return $title;
+	}
+	return 'کارت‌به‌کارت / واریز بانکی (مهلت ' . gbacs_fa_digits( gbacs_deadline_hours() ) . ' ساعت)';
+}, 10, 2 );
+
+add_filter( 'woocommerce_gateway_description', function ( $description, $id ) {
+	if ( 'bacs' !== $id ) {
+		return $description;
+	}
+	$hours = gbacs_fa_digits( gbacs_deadline_hours() );
+	return 'پس از ثبت سفارش، شمارهٔ کارت و شبا نمایش داده می‌شود. مبلغ را واریز کنید و فیش آن را همان‌جا در صفحهٔ تأیید سفارش (یا بعداً از صفحهٔ سفارش در حساب کاربری) بارگذاری نمایید. مهلت پرداخت ' . $hours . ' ساعت است.';
+}, 10, 2 );
 
 /* =========================================================================
  * 2. CUSTOM ORDER STATUS — "Awaiting Payment Confirmation"
@@ -174,7 +203,7 @@ function gbacs_render_panel( $order, $context = 'thankyou' ) {
 
 		<div class="gbacs-card">
 			<h2 class="gbacs-h2">💳 پرداخت سفارش شما با کارت‌به‌کارت / واریز بانکی</h2>
-			<p class="gbacs-lead">از خرید شما سپاسگزاریم 🙏 سفارش‌تان با موفقیت ثبت شد. برای نهایی‌شدن آن، لطفاً مبلغ زیر را به حساب ما واریز کنید و سپس فیش واریز را در همین صفحه بارگذاری نمایید.</p>
+			<p class="gbacs-lead">سفارش‌تان ثبت شد ✅ فقط ۲ قدم مانده: مبلغ زیر را واریز کنید و فیش آن را همین‌جا بارگذاری نمایید.</p>
 
 			<div class="gbacs-amount">
 				<span>مبلغ قابل پرداخت</span>
@@ -218,16 +247,18 @@ function gbacs_render_panel( $order, $context = 'thankyou' ) {
 						<li><span class="gbacs-bank-k">بانک</span><span class="gbacs-bank-v"><?php echo esc_html( $account['bank'] ); ?></span></li>
 					<?php endif; ?>
 				</ul>
+				<?php if ( $account['sheba'] ) : ?>
+					<p class="gbacs-bank-tip">💡 کارت‌به‌کارت سقف روزانه دارد؛ برای مبالغ بالا، واریز با <strong>شماره شبا</strong> مطمئن‌تر و بدون محدودیت است.</p>
+				<?php endif; ?>
 			</div>
 
 			<!-- STEP-BY-STEP -->
 			<div class="gbacs-steps">
 				<h3>مراحل تکمیل خرید</h3>
 				<ol>
-					<li>مبلغ <strong><?php echo esc_html( $total_txt ); ?></strong> را از طریق کارت‌به‌کارت، اپلیکیشن بانکی یا اینترنت‌بانک به شماره کارت/شبای بالا واریز کنید.</li>
-					<li>از صفحهٔ پرداخت موفق، اسکرین‌شات بگیرید یا رسید بانکی را ذخیره کنید.</li>
-					<li>همان فیش را از کادر زیر در همین صفحه <strong>بارگذاری</strong> کنید.</li>
-					<li>برای تسریع در تأیید، می‌توانید فیش را از طریق <strong>واتساپ</strong> یا <strong>تلگرام</strong> هم برای ما بفرستید (دکمه‌های پایین صفحه).</li>
+					<li>مبلغ <strong><?php echo esc_html( $total_txt ); ?></strong> را به شماره کارت (یا برای مبالغ بالا، شبا) واریز کنید.</li>
+					<li>از رسید پرداخت عکس یا اسکرین‌شات بگیرید.</li>
+					<li>فیش را در کادر زیر <strong>بارگذاری</strong> کنید — یا از طریق <strong>واتساپ/تلگرام</strong> بفرستید.</li>
 				</ol>
 				<p class="gbacs-note">شمارهٔ سفارش شما: <strong>#<?php echo esc_html( $order_no ); ?></strong> — لطفاً هنگام واریز یا ارسال پیام، این شماره را ذکر کنید.</p>
 			</div>
@@ -611,6 +642,7 @@ function gbacs_inline_assets() {
 	.gbacs-bank-k{color:#71809a}
 	.gbacs-bank-v{font-weight:700;display:flex;align-items:center;gap:8px;direction:ltr}
 	.gbacs-bank-v bdi{letter-spacing:.5px}
+	.gbacs-bank-tip{font-size:12.5px;line-height:1.9;color:#063e45;background:rgba(8,183,200,.08);border-radius:10px;padding:9px 12px;margin:14px 0 0}
 	.gbacs-copybtn{background:var(--g-cyan,#08B7C8);color:#fff;border:0;border-radius:8px;padding:4px 10px;font-size:12px;font-family:inherit;cursor:pointer}
 	.gbacs-copybtn:active{transform:scale(.95)}
 	.gbacs-steps{margin:0 0 22px}
