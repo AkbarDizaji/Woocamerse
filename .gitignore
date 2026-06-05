@@ -38,6 +38,7 @@ wp-content/plugins/*
 !wp-content/plugins/gulfino-torob/
 !wp-content/plugins/gulfino-brand/
 !wp-content/plugins/gulfino-noon-sync/
+!wp-content/plugins/gulfino-bacs/
 !wp-content/plugins/zibal-gateway-for-woocommerce/
 
 # Themes (Only track our custom one)
