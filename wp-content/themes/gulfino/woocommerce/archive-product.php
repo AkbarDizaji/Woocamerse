@@ -47,6 +47,17 @@
 }
 .g-pager ul.page-numbers a.next,
 .g-pager ul.page-numbers a.prev{font-size:18px;}
+
+/* ---- RESPONSIVE ---- */
+@media(max-width:1100px){.g-shop-grid{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:768px){
+  .g-shop-wrap{padding:36px 18px;}
+  .g-shop-header{margin-bottom:30px;padding-bottom:20px;}
+  .g-shop-header h1{font-size:32px;}
+  .g-shop-grid{grid-template-columns:repeat(2,1fr);gap:14px;}
+  .g-shop-filters{margin-bottom:28px;}
+}
+@media(max-width:380px){.g-shop-grid{grid-template-columns:1fr;}}
 </style>
 
 <div class="g-shop-wrap">

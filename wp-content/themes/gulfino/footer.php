@@ -83,6 +83,16 @@
 .g-footer-wa{display:flex;align-items:center;gap:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:16px 18px;}
 .g-footer-hr{border:none;border-top:1px solid rgba(255,255,255,.08);margin-bottom:26px;}
 .g-footer-bottom{display:flex;justify-content:space-between;opacity:.45;font-size:13px;}
+
+/* ---- RESPONSIVE ---- */
+@media(max-width:900px){
+  .g-footer{padding:50px 0 30px;}
+  .g-footer-grid{grid-template-columns:1fr 1fr;gap:36px 30px;margin-bottom:40px;}
+}
+@media(max-width:560px){
+  .g-footer-grid{grid-template-columns:1fr;gap:34px;}
+  .g-footer-bottom{flex-direction:column;gap:8px;text-align:center;}
+}
 </style>
 <?php wp_footer(); ?>
 </body>

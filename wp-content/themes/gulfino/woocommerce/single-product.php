@@ -257,11 +257,26 @@ while ( have_posts() ) :
 	.g-pdp-main{grid-template-columns:1fr;gap:30px}
 	.g-pdp-rel-grid{grid-template-columns:repeat(2,1fr)}
 	.g-pdp-title{font-size:24px}
+	.g-pdp-desc{margin-top:44px;padding:28px 24px}
+	.g-pdp-related{margin-top:48px}
 }
 @media(max-width:560px){
 	.g-pdp{padding:20px 18px 50px}
+	.g-pdp-crumb{margin-bottom:18px;flex-wrap:wrap}
+	.g-pdp-title{font-size:21px}
+	.g-pdp-price{font-size:24px}
 	.g-pdp-cart form.cart{gap:10px}
-	.g-pdp-cart button.single_add_to_cart_button{min-width:160px}
+	.g-pdp-cart .quantity input.qty{width:64px;height:50px}
+	/* Let the add-to-cart button take the full row under the quantity */
+	.g-pdp-cart button.single_add_to_cart_button,
+	.g-pdp-cart .single_add_to_cart_button{flex:1 1 100%;min-width:0;height:50px}
+	.g-pdp-cart .variations select{min-width:0;width:100%}
+	.g-pdp-thumb{width:64px;height:64px}
+	.g-pdp-desc{margin-top:36px;padding:22px 18px}
+	.g-pdp-sec-title{font-size:19px;margin-bottom:16px}
+}
+@media(max-width:400px){
+	.g-pdp-rel-grid{grid-template-columns:1fr}
 }
 </style>
 

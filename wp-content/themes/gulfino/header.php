@@ -91,12 +91,41 @@ ul { list-style:none; }
   border-bottom:2.5px solid var(--cyan); padding-bottom:2px;
 }
 
-/* ---- Responsive: collapse topbar on mobile ---- */
-@media (max-width:768px) {
+/* Hamburger toggle — hidden on desktop */
+.g-nav-toggle {
+  display:none; background:none; border:none; cursor:pointer;
+  padding:8px; color:var(--navy); line-height:0; flex-shrink:0;
+}
+
+/* ---- Responsive ---- */
+@media (max-width:980px) {
   .g-topbar-r { display:none; }
-  .g-nav-links { gap:16px; font-size:13px; }
-  .g-search-box { width:160px; }
+  .g-nav-links { gap:18px; font-size:14px; }
+  .g-search-box { width:200px; }
+}
+@media (max-width:768px) {
+  .g-nav-inner { gap:12px; }
+  .g-nav-toggle { display:flex; align-items:center; }
+  .g-search-box { display:none; }
   .g-logo { font-size:30px; }
+  /* Nav links become a collapsible dropdown below the header */
+  .g-nav-links {
+    position:absolute; top:100%; right:0; left:0;
+    flex-direction:column; gap:0;
+    background:#fff; box-shadow:0 12px 24px rgba(0,0,0,.08);
+    border-top:1px solid #eef0f5;
+    max-height:0; overflow:hidden;
+    transition:max-height .3s ease;
+  }
+  .g-header.open .g-nav-links { max-height:340px; }
+  .g-nav-links a {
+    padding:14px 30px; font-size:15px;
+    border-bottom:1px solid #f4f6f9; white-space:normal;
+  }
+  .g-nav-links a.active {
+    border-bottom:1px solid #f4f6f9; padding-bottom:14px;
+    background:rgba(8,183,200,.06);
+  }
 }
 </style>
 </head>
@@ -137,6 +166,9 @@ ul { list-style:none; }
 <!-- NAVBAR -->
 <header class="g-header">
   <div class="g-nav-inner">
+    <button type="button" class="g-nav-toggle" id="gNavToggle" aria-label="منو" aria-expanded="false">
+      <svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
     <div class="g-search-box">
       <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="#aaa" stroke-width="2.5"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
       <input type="text" placeholder="جستجو در محصولات...">
@@ -151,3 +183,14 @@ ul { list-style:none; }
     </nav>
   </div>
 </header>
+<script>
+(function(){
+  var t = document.getElementById('gNavToggle'),
+      h = document.querySelector('.g-header');
+  if(!t || !h) return;
+  t.addEventListener('click', function(){
+    var open = h.classList.toggle('open');
+    t.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+})();
+</script>
